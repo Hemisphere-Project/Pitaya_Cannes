@@ -3,7 +3,9 @@
         {
             "name": "Linux",
             "includePath": [
-                "/home/mgr/Arduino/**"
+                "/home/mgr/Arduino/**",
+                "/home/mgr/Arduino/hardware/espressif/esp32/**",
+                "/home/mgr/Arduino/tools/**"
             ],
             "forcedInclude": [],
             "intelliSenseMode": "gcc-x64",

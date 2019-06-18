@@ -59,8 +59,8 @@ void setup() {
 void loop() {
 
   // **FAKE** Encoder change
-  int now = (millis() / 1000);
-  if ( now%6 < 3 && millis()%4 == 1  && random8(10)<6) lastEncoderRead += 1;
+  // int now = (millis() / 1000);
+  // if ( now%6 < 3 && millis()%4 == 1  && random8(10)<6) lastEncoderRead += 1;
 
   // Move WHITE FISH with encoder
   int encodeMove = getEncoder() - lastEncoderRead;
@@ -76,6 +76,7 @@ void loop() {
 
   // Draw
   FastLED.clear();
+  // wave(leds);
   fish_red.draw(leds);
   fish_white.draw(leds);
   FastLED.show();
