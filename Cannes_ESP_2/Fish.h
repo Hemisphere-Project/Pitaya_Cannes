@@ -1,85 +1,110 @@
+#pragma once
 
-#define CRAWLER_COOLING 90      // Crawler dimming speed 
+#define FISH_ANIMATE_FREQ  50           // Time between to animation Frame
+#define FISH_POSITION_ACCURACY 100      // Position increment for 1 pixel
 
-#define SPARKS_CHANCE 40        // Chance to spark: generate dust when moving 
-#define SPARKS_BRIGHTNESS 90    // Sparks brightness (% of crawler main brightness)   
-
-#define TRAILER_COOLING 70      // Trail dimming speed
-
+#include "Ticker.h"
 
 class Fish {
 
     public:
         //
-        // Constructor
+        // Constructor (with default values)
         //
-        Fish(int size) : sizeBoid(size) {
-            colorBoid = CRGB(255,255,255);
-        }        
+        Fish(int size, int speedMinimum = 30, int coolingBoid = 90, int coolingTrailer = 70, int spark_chance = 40, int spark_brightness = 220) 
+            : size(size), speedMin(speedMinimum), coolingBoid(coolingBoid), coolingTrailer(coolingTrailer), sparkChance(spark_chance), sparkBrightness(spark_brightness)
+        { 
+            color = CRGB(255,255,255);
+            direction = 1;
+            position = 0;
+            speed = speedMinimum;
+
+            // All Black
+            for(int i=0; i<NUM_LEDS; i++) {
+                fulltrail[i] = CRGB::Black;
+                boid[i] = 0;
+            }
+
+            // Start Animator Clock
+            clock.attach_ms(FISH_ANIMATE_FREQ, &Fish::animator, this );
+        }
+
         
         //
         // Draw
         //
         void draw(CRGB* leds) {
-
-            // Animate
-            if ((millis()-lastUpdate) > updateFreq) {
-                animate();
-                lastUpdate = millis();
-            }
-
-            // draw boid into meteor
-            int mIndex;
-            for(int j = 0; j < sizeBoid; j++) {
-                mIndex = (posBoid-(j*dirBoid))%NUM_LEDS;
-                if (mIndex < 0) mIndex += NUM_LEDS;
-                meteor[mIndex] = CRGB( scale8(colorBoid.r, boid[j]), scale8(colorBoid.g, boid[j]), scale8(colorBoid.b, boid[j]));
-            }
-        
-            // draw on LEDS
             for( int j = 0; j < NUM_LEDS; j++) 
-                leds[j] += meteor[j];
+                leds[j] += fulltrail[j];
+        }
+
+        //
+        // Move   (+ forward, - backward)
+        //
+        void move(int steps) {
+            if (steps > 0) direction = 1;
+            else if (steps < 0) direction = -1;
+            else return;
+
+            position += steps;
+
+            if (position < 0) position += NUM_LEDS*FISH_POSITION_ACCURACY;
+            else position %= NUM_LEDS*FISH_POSITION_ACCURACY;
         }
 
         //
         // Move Forward
         //
-        void move_up() {
-            dirBoid = 1;
-            move();
+        void move_up(int steps=1) {
+            steps = abs(steps);
+            move(steps);
         }
 
         //
         // Move Backward
         //
-        void move_down() {
-            dirBoid = -1;
-            move();
+        void move_down(int steps=1) {
+            steps = abs(steps);
+            move(steps*-1);
         }
 
         //
-        // Move in last direction
+        // Move 1 step in set direction
         //
         void move() {
-            posBoid += dirBoid;
-            if (posBoid < 0) posBoid += NUM_LEDS;
-            else posBoid %= NUM_LEDS;
+            move(direction);
         }
 
         //
         //  Jump to position
         //
         void jump(int pos) {
-            posBoid = pos%NUM_LEDS;
+            position = (pos%NUM_LEDS)*FISH_POSITION_ACCURACY;
         }
 
         //
         // Color change
         //
-        void color(CRGB colo) {
-            colorBoid = colo;
+        void setColor(CRGB colo) {
+            color = colo;
         }
 
+        //
+        // Position in PIXEL
+        //
+        int getPositionPixel() {
+            return position/FISH_POSITION_ACCURACY;
+        }
+
+        //
+        // Speed Goal
+        //
+        void speedAim(int s) {
+
+            // smoothing speed change
+            if (abs(s) > abs(speed)) speed = (s+speed*2)/3; // Accelerate
+            else speed = (s+speed*3)/4; // Decelerate
+        }
 
 
     private:
@@ -87,45 +112,69 @@ class Fish {
         //
         //  Internal stuffs
         //
-        int sizeBoid;           // length of the boid (the base fish) - set in constructor
-        int posBoid = 0;       // position of boid 
-        int dirBoid = 1;        // direction (1 / -1)  
+        CRGB color;         // color of the fish
+        int size;           // length of the base fish
+        long position;      // position (x1000 pixel)   position=2000  =>  pixel=2  see FISH_POSITION_ACCURACY
+        int direction;      // direction (1 / -1)  
+        int speed;          // as position change per frame
+        int speedMin;
 
-        CRGB colorBoid;         // color of the fish
+        int coolingBoid;        // Crawler dimming speed 
+        int coolingTrailer;     // Trail dimming speed
+        int sparkChance;        // Chance to spark: generate dust when moving 
+        int sparkBrightness;    // Sparks brightness (% of crawler main brightness)   
+
 
         uint32_t lastUpdate = 0;   
-        int updateFreq = 50;    // time (ms) between animation frame  
+
+        Ticker clock;
 
         byte boid[NUM_LEDS];
-        CRGB meteor[NUM_LEDS];
+        CRGB fulltrail[NUM_LEDS];
 
+        // Clocked callback
+        static void animator(Fish *pThis) { pThis->animate(); }
 
         //
         // Update internal animation
         //
         void animate() {
-    
-            // TRAIL Fade
+
+            // Move SPEED
+            if (speed != 0) {
+                move(speed);
+                speedAim(direction*speedMin);
+            }
+
+            // FULLTRAIL Fade
             for(int j=0; j<NUM_LEDS; j++) 
                 if( (random8(10)>5) ) 
-                    meteor[j].fadeToBlackBy( TRAILER_COOLING ); 
+                    fulltrail[j].fadeToBlackBy( coolingTrailer ); 
 
             // BOID Cool down every cell a little
             int cooldown;
-            for( int i = 1; i < sizeBoid; i++) {
-                cooldown = random16( ((CRAWLER_COOLING * 10) / sizeBoid) + 2);
+            for( int i = 1; i < size; i++) {
+                cooldown = random16( ((coolingBoid * 10) / size) + 2);
                 if(cooldown>boid[i]) boid[i]=0;
                 else boid[i]=boid[i]-cooldown;
             }
 
             // BOID Heat from each cell drifts 'up' and diffuses a little
-            for( int k= sizeBoid - 1; k >= 2; k--) 
+            for( int k= size - 1; k >= 2; k--) 
                 boid[k] = (boid[k - 1] + 2*boid[k - 2]) / 3;
-            boid[1] = random8(180, 230);
+            boid[1] = random8(200, 240);
             boid[0] = random8(220, 255);
 
-            // Randomly ignite new trail 'sparks'
-            if( random8() < SPARKS_CHANCE ) boid[random16(sizeBoid/2, sizeBoid)] = 255*SPARKS_BRIGHTNESS/100;
+            // BOID TAIL Randomly ignite new 'sparks'
+            if( random8() < sparkChance ) boid[random16(size/2, size)] = sparkBrightness;
+
+            // DRAW boid into fulltrail
+            int mIndex;
+            for(int j = 0; j < size; j++) {
+                mIndex = (getPositionPixel()-(j*direction))%NUM_LEDS;
+                if (mIndex < 0) mIndex += NUM_LEDS;
+                fulltrail[mIndex] = CRGB( scale8(color.r, boid[j]), scale8(color.g, boid[j]), scale8(color.b, boid[j]));
+            }
 
         }
     

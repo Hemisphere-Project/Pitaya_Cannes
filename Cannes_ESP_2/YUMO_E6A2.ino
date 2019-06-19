@@ -1,6 +1,7 @@
 volatile int encoderLast = 0;
 volatile long encoderValue = 0;
 volatile int encoderAngle = 0;
+volatile long encoderDiff = 0;
 
 int encoderPin1;
 int encoderPin2;
@@ -22,8 +23,14 @@ void updateEncoder(){
   int encoded = (MSB << 1) |LSB; //converting the 2 pin value to single number
   int sum  = (encoderLast << 2) | encoded; //adding it to the previous encoded value
 
-  if(sum == 0b1101 || sum == 0b0100 || sum == 0b0010 || sum == 0b1011) encoderValue ++;
-  if(sum == 0b1110 || sum == 0b0111 || sum == 0b0001 || sum == 0b1000) encoderValue --;
+  if(sum == 0b1101 || sum == 0b0100 || sum == 0b0010 || sum == 0b1011) {
+    encoderValue ++;
+    encoderDiff ++;
+  }
+  if(sum == 0b1110 || sum == 0b0111 || sum == 0b0001 || sum == 0b1000) {
+    encoderValue --;
+    encoderDiff --;
+  }
 
   encoderLast = encoded; //store this value for next time
 
@@ -33,10 +40,16 @@ void updateEncoder(){
   encoderAngle = map(encoderValue, 0, 799, 0, 359);
 }
 
-long getEncoder() {
+long getEncoderPosition() {
   return encoderValue;
 }
 
 int getEncoderAngle() {
   return encoderAngle;
+}
+
+long getEncoderDiff() {
+  long diff = encoderDiff;
+  encoderDiff = 0;
+  return diff;
 }
