@@ -5,10 +5,17 @@
 #include "FastLED.h"
 #define LED_PIN     23
 #define NUM_LEDS    1600
-#define BRIGHTNESS  200
+#define BRIGHTNESS  255
 #define LED_TYPE    WS2812
 #define COLOR_ORDER GRB
 CRGB leds[NUM_LEDS];
+
+// test neo pixel
+// #include <Adafruit_NeoPixel.h>
+// #ifdef __AVR__
+//   #include <avr/power.h>
+// #endif
+// Adafruit_NeoPixel pixels = Adafruit_NeoPixel(NUM_LEDS, LED_PIN, NEO_GRB + NEO_KHZ800);
 
 // ROTARY ENCODER
 int encoderPin1 = 21;
@@ -24,6 +31,8 @@ void setup() {
   // LED
   FastLED.addLeds<LED_TYPE, LED_PIN, COLOR_ORDER>(leds, NUM_LEDS);
   FastLED.setBrightness(  BRIGHTNESS );
+  //NeoPixel
+  // pixels.begin();
 
   // CODER
   pinMode(encoderPin1, INPUT_PULLUP);
@@ -31,7 +40,7 @@ void setup() {
   attachInterrupt(digitalPinToInterrupt(encoderPin1), updateEncoder, CHANGE);
   attachInterrupt(digitalPinToInterrupt(encoderPin2), updateEncoder, CHANGE);
 
-  // Serial.begin(115200);
+  Serial.begin(115200);
 
 }
 
@@ -52,11 +61,21 @@ void loop() {
 
   int visu = map(encoderValue, 0, 799, 0, NUM_LEDS);
   int intensity = map(encoderValue, 0, 799, 0, 255);
-    Serial.println(visu);
+    // Serial.println(visu);
   for(int i=0; i<=visu; i++) {
     // leds[i] = CRGB(intensity,intensity,intensity);
     leds[i] = CRGB(255,255,255);
   }
+
+
+  // int visu = map(encoderValue, 0, 799, 0, NUM_LEDS);
+  // int intensity = map(encoderValue, 0, 799, 0, 255);
+  // for(int i=0; i<=visu; i++) {
+  //   pixels.setPixelColor(i, pixels.Color(200,200,200));
+  // }
+  // pixels.show();
+
+
 
   // oscillate
   // for(int i=0; i<=NUM_LEDS; i++) {
@@ -72,6 +91,7 @@ void loop() {
   // snake 1
   for(int i=0; i<=snakeLength; i++) {
     leds[xsnake1+i] = CRGB(255*i/snakeLength,255*i/snakeLength,255*i/snakeLength);
+    //pixels.setPixelColor(xsnake1+i, pixels.Color(200,200,200));
   }
   xsnake1 = xsnake1+xstep;
   if(xsnake1>1500){ xsnake1=0;}
