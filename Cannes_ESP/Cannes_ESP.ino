@@ -1,104 +1,103 @@
 
 // PINS SUR LA CARTE: 23 22 11 5 21 19
+#include "WiFi.h"
 
 // LED STRIP
 #include "FastLED.h"
 #define LED_PIN     23
-#define NUM_LEDS    1600
-#define BRIGHTNESS  255
+#define NUM_LEDS    1500
+#define BRIGHTNESS  250
 #define LED_TYPE    WS2812
 #define COLOR_ORDER GRB
 CRGB leds[NUM_LEDS];
 
-// test neo pixel
-// #include <Adafruit_NeoPixel.h>
-// #ifdef __AVR__
-//   #include <avr/power.h>
-// #endif
-// Adafruit_NeoPixel pixels = Adafruit_NeoPixel(NUM_LEDS, LED_PIN, NEO_GRB + NEO_KHZ800);
+// FISH NET
+#include "Fishnet.h"
+Fishnet fishnet;
 
-// ROTARY ENCODER
-int encoderPin1 = 21;
-int encoderPin2 = 19;
-volatile int lastEncoded = 0;
-volatile long encoderValue = 0;
-volatile long encoderAngle = 0;
+// ENCODER
+#define ENCODER_SPEED_FACTOR 150
+unsigned long lastEncoderRead = 0;
 
-
+//
+// SETUP
+//
 void setup() {
-
-  delay(2000);
-  // LED
-  FastLED.addLeds<LED_TYPE, LED_PIN, COLOR_ORDER>(leds, NUM_LEDS);
-  FastLED.setBrightness(  BRIGHTNESS );
-  //NeoPixel
-  // pixels.begin();
-
-  // CODER
-  pinMode(encoderPin1, INPUT_PULLUP);
-  pinMode(encoderPin2, INPUT_PULLUP);
-  attachInterrupt(digitalPinToInterrupt(encoderPin1), updateEncoder, CHANGE);
-  attachInterrupt(digitalPinToInterrupt(encoderPin2), updateEncoder, CHANGE);
 
   Serial.begin(115200);
 
+  // RADIO OFF
+  WiFi.mode(WIFI_OFF);
+  btStop();
+
+  // CODER
+  setupEncoder(21, 19); // (PIN1 / PIN2)
+
+  // LED
+  FastLED.addLeds<LED_TYPE, LED_PIN, COLOR_ORDER>(leds, NUM_LEDS);
+  FastLED.setBrightness(  BRIGHTNESS );
+
+  // WHITE FISH
+  Fish* fish_white = new Fish(20, 30, 70, 140, 40, 230);     // create fish (size, speedMinimum, boid_cooling, trailer_cooling, spark_chance, spark_brightness)
+  fishnet.add( fish_white );                            // add to fishnet
+  fish_white->setColor( CRGB(255,255,255) );            // set WHITE
+  fish_white->jump(50);                                 // Initial position
+
+  // WHITE FISH 2
+  Fish* fish_white2 = new Fish(40, 30, 70, 140, 40, 230);     // create fish (size, speedMinimum, boid_cooling, trailer_cooling, spark_chance, spark_brightness)
+  fishnet.add( fish_white2 );
+  fish_white2->setColor( CRGB(255,255,255) );      // set WHITE
+  fish_white2->jump(650);                          // Initial position
+
+
+  // RED FISH 
+  Fish* fish_white3 = new Fish(15);                // create fish with default settings
+  fishnet.add( fish_white3 );
+  fish_white3->setColor( CRGB(255,255,255) );    // set RED
+  fish_white3->jump(1250);                   // Initial position
+  
+
+  // DRAW TASK
+  xTaskCreatePinnedToCore(
+                    [](void * pvParameters){ while(true) draw(); },   /* Function to implement the task */
+                    "drawTask", /* Name of the task */
+                    10000,      /* Stack size in words */
+                    NULL,       /* Task input parameter */
+                    1,          /* Priority of the task */
+                    NULL,       /* Task handle. */
+                    0);  /* Core where the task should run */
+
 }
 
-int xsnake1;
-int xstep = 5;
-int snakeLength = 50;
-
-float phi = 0;
-float phistep = 0.1;
-
-unsigned long timeNow;
-
+//
+// LOOP (Core 1)
+//
 void loop() {
 
-  FastLED.clear ();
+  // GET SPEED FROM ENCODER:
+  int lapse = millis() - lastEncoderRead;
+  lastEncoderRead = millis();
+  if (lapse == 0) lapse = 1;
+  int diff = getEncoderDiff() * ENCODER_SPEED_FACTOR/lapse;
+  if (diff != 0) Serial.println(diff);
 
-  // timeNow = micros();
+  // Move FISHNET with encoder
+  if (diff != 0) fishnet.speedAim( diff );
 
-  int visu = map(encoderValue, 0, 799, 0, NUM_LEDS);
-  int intensity = map(encoderValue, 0, 799, 0, 255);
-    // Serial.println(visu);
-  for(int i=0; i<=visu; i++) {
-    // leds[i] = CRGB(intensity,intensity,intensity);
-    leds[i] = CRGB(255,255,255);
-  }
+  // WAVE progress
+  wave_progress();
 
+  delay(15);  // this delay influences ENCODER speed factor && WAVE speed factor
+}
 
-  // int visu = map(encoderValue, 0, 799, 0, NUM_LEDS);
-  // int intensity = map(encoderValue, 0, 799, 0, 255);
-  // for(int i=0; i<=visu; i++) {
-  //   pixels.setPixelColor(i, pixels.Color(200,200,200));
-  // }
-  // pixels.show();
-
-
-
-  // oscillate
-  // for(int i=0; i<=NUM_LEDS; i++) {
-  //   uint8_t col = 150*(sin(phi)+1)/2;
-  //   // int c = int(col)
-  //   leds[i] = CRGB(0,0,150);
-  // }
-  // phi = phi+phistep;
-  // if(phi>2*PI){ phi=0;}
-
-  // HOW TO MULTIPLY / ADD one effect over the other ??
-
-  // snake 1
-  for(int i=0; i<=snakeLength; i++) {
-    leds[xsnake1+i] = CRGB(255*i/snakeLength,255*i/snakeLength,255*i/snakeLength);
-    //pixels.setPixelColor(xsnake1+i, pixels.Color(200,200,200));
-  }
-  xsnake1 = xsnake1+xstep;
-  if(xsnake1>1500){ xsnake1=0;}
-
-
-
-  // showtime
+//
+// DRAW (Core 0)
+//
+void draw() {
+  FastLED.clear();
+  wave_draw(leds);
+  fishnet.draw(leds);
   FastLED.show();
   delay(1);
 }
+
