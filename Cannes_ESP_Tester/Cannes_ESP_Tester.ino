@@ -5,7 +5,7 @@
 #include "FastLED.h"
 #define LED_PIN     23
 #define NUM_LEDS    1600
-#define BRIGHTNESS  255
+#define BRIGHTNESS  200
 #define LED_TYPE    WS2812
 #define COLOR_ORDER GRB
 CRGB leds[NUM_LEDS];
@@ -51,6 +51,7 @@ int snakeLength = 50;
 float phi = 0;
 float phistep = 0.1;
 
+
 unsigned long timeNow;
 
 void loop() {
@@ -61,10 +62,9 @@ void loop() {
 
   int visu = map(encoderValue, 0, 799, 0, NUM_LEDS);
   int intensity = map(encoderValue, 0, 799, 0, 255);
-    // Serial.println(visu);
+
   for(int i=0; i<=visu; i++) {
-    // leds[i] = CRGB(intensity,intensity,intensity);
-    leds[i] = CRGB(255,255,255);
+    leds[i] = CRGB(255,0,0);
   }
 
 
