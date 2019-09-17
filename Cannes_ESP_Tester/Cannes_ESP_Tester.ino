@@ -4,8 +4,8 @@
 // LED STRIP
 #include "FastLED.h"
 #define LED_PIN     23
-#define NUM_LEDS    1600
-#define BRIGHTNESS  200
+#define NUM_LEDS    850
+#define BRIGHTNESS  255
 #define LED_TYPE    WS2812
 #define COLOR_ORDER GRB
 CRGB leds[NUM_LEDS];
@@ -63,8 +63,8 @@ void loop() {
   int visu = map(encoderValue, 0, 799, 0, NUM_LEDS);
   int intensity = map(encoderValue, 0, 799, 0, 255);
 
-  for(int i=0; i<=visu; i++) {
-    leds[i] = CRGB(255,0,0);
+  for(int i=0; i<visu; i++) {
+    leds[i] = CRGB(255,255,255);
   }
 
 
@@ -90,11 +90,10 @@ void loop() {
 
   // snake 1
   for(int i=0; i<=snakeLength; i++) {
-    leds[xsnake1+i] = CRGB(255*i/snakeLength,255*i/snakeLength,255*i/snakeLength);
-    //pixels.setPixelColor(xsnake1+i, pixels.Color(200,200,200));
+    if(xsnake1+i<NUM_LEDS) leds[xsnake1+i] = CRGB(255*i/snakeLength,255*i/snakeLength,255*i/snakeLength);
   }
   xsnake1 = xsnake1+xstep;
-  if(xsnake1>1500){ xsnake1=0;}
+  if(xsnake1>NUM_LEDS-snakeLength){ xsnake1=0;}
 
 
 
