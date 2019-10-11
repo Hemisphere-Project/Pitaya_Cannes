@@ -33,9 +33,9 @@ class Fish {
         //
         // Draw
         //
-        void draw(CRGB* leds) {
+        void draw(CRGB* ll) {
             for( int j = 0; j < NUM_LEDS; j++) 
-                leds[j] += fulltrail[j];
+                ll[NUM_LEDS-1-j] += fulltrail[j];   // draw in reverse
         }
 
         //
@@ -99,7 +99,7 @@ class Fish {
         //
         // Speed Goal
         //
-        void speedAim(int s) {
+        void speedAnim(int s) {
 
             // smoothing speed change
             if (abs(s) > abs(speed)) speed = (s+speed*2)/3; // Accelerate
@@ -124,9 +124,6 @@ class Fish {
         int sparkChance;        // Chance to spark: generate dust when moving 
         int sparkBrightness;    // Sparks brightness (% of crawler main brightness)   
 
-
-        uint32_t lastUpdate = 0;   
-
         Ticker clock;
 
         byte boid[NUM_LEDS];
@@ -143,7 +140,7 @@ class Fish {
             // Move SPEED
             if (speed != 0) {
                 move(speed);
-                speedAim(direction*speedMin);
+                speedAnim(direction*speedMin);
             }
 
             // FULLTRAIL Fade

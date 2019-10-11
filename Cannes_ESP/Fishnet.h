@@ -18,14 +18,14 @@ class Fishnet {
             return net[i];
         }
 
-        void draw(CRGB* leds) {
+        void draw(CRGB* l) {
             for(int i=0; i<MAX_FISH; i++)
-                if (net[i]) net[i]->draw(leds);
+                if (net[i]) net[i]->draw(l);
         }
 
-        void speedAim(int s) {
+        void speedAnim(int s) {
             for(int i=0; i<MAX_FISH; i++)
-                if (net[i]) net[i]->speedAim(s);
+                if (net[i]) net[i]->speedAnim(s);
         }
 
     private:
