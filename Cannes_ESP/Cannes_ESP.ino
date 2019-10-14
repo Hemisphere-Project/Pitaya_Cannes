@@ -2,9 +2,39 @@
 // PINS SUR LA CARTE: 23 22 11 5 21 19
 #include "WiFi.h"
 #include "Ticker.h"
+#include "FastLED.h"
+
+// *******************************************
+//
+
+// COLORS
+CRGB colorBLUE  = CRGB(22, 0, 90);    // couleur vague bleue
+CRGB colorGREEN = CRGB(0, 120, 55);   // couleur ressac vert
+CRGB colorYELW  = CRGB(120, 75, 0);   // couleur ressac jaune
+CRGB colorRED   = CRGB(160, 40,  0);  // couleur ressac orange
+
+// PAUSE BLACK
+int pauseBLACK = 5000;                // pause au noir en millisecondes
+
+// FISH MODE
+#define WAVE_COUNT_CHANGE 2           // nombre de vague avant changement de mode
+
+//ENCODER
+#define ENCODER_SPEED_FACTOR 150      // sensibilité encoder
+bool encoderReverse = true;           // inversion encoder [true | false]
+
+//
+// *******************************************
+
+// WAVE NET
+#include "Wave.h"
+Wave* wave_blue;
+Wave* wave_ressac;
+Wave* ressac_green;
+Wave* ressac_yellow;
+Wave* ressac_red;
 
 // LED STRIP
-#include "FastLED.h"
 #define LED_PIN     23
 #define NUM_LEDS    750
 #define BRIGHTNESS  255
@@ -16,37 +46,60 @@ CRGB ledsReversed[NUM_LEDS];
 // WAVE CLOCK
 Ticker waveclock;
 
-// WAVE NET
-#include "Wave.h"
-Wave* wave_blue;
-Wave* wave_ressac;
-
 // FISH NET
-#include "Fishnet.h"
-Fishnet fishnet;
+#include "Fish.h"
+#define MAX_FISH 25
+Fish fishnet[MAX_FISH];
+
+// MODE
+int wave_count = 0;
+int FISHMODE = 1;
 
 // ENCODER
-#define ENCODER_SPEED_FACTOR 150
 unsigned long lastEncoderRead = 0;
+
 
 //
 // ASYNC WAIT
 //
 #define N_TIMER 10
 unsigned long timers[N_TIMER];
-bool wait(int t, uint32_t ms) {
+bool wait(int t, uint32_t ms, bool autoreset) 
+{
   if (t>=N_TIMER) return false;
   if (timers[t] == 0) {
     timers[t] = millis();
-    return true;
+    return true; // start waiting
   }
-  else if ((millis()-timers[t]) < ms) 
-    return true;
+  else if ((millis()-timers[t]) < ms) {
+    return true;  // still waiting
+  }
   
-  else return false;
+  else {
+    if (autoreset) timers[t] = 0; //re-arm 
+    return false; // wait is over !
+  }
 }
-void waitreset() {
-  for (int t=0; t<N_TIMER; t++) timers[t] = 0;
+bool wait(int t, uint32_t ms) { return wait(t, ms, true); }
+
+void wavereset() {
+  timers[0] = 0;
+  wave_blue->reset();
+  ressac_green->reset();
+  ressac_yellow->reset();
+  ressac_red->reset();
+
+  int r = random(3);
+  if (r == 0) wave_ressac = ressac_green;
+  if (r == 1) wave_ressac = ressac_yellow;
+  if (r == 2) wave_ressac = ressac_red;
+
+  wave_count += 1;
+  if (wave_count > WAVE_COUNT_CHANGE) {
+    wave_count = 0;
+    if (FISHMODE == 2) FISHMODE = 1;
+    else FISHMODE = 2;
+  }
 }
 
 //
@@ -68,35 +121,18 @@ void setup() {
   FastLED.setBrightness(  BRIGHTNESS );
 
   // WAVES
-  wave_blue   = new Wave( CRGB(0, 10, 40),    NUM_LEDS,     57, EASE_QUAD );     // create wave (color, size, speed, easePOW)
-  wave_ressac = new Wave( CRGB(10, 139, 30),  NUM_LEDS*0.3, 75, EASE_QUATR );     // create wave (color, size, speed, easePOW)
-  waitreset();
+  wave_blue   = new Wave(     colorBLUE,  CRGB(0, 0, 0),       NUM_LEDS,       57, EASE_QUAD );     // create wave (color, size, speed, easePOW)
+  ressac_green  = new Wave(   colorGREEN, colorBLUE,    NUM_LEDS*0.3,   75, EASE_QUATR );     // create wave (color, size, speed, easePOW)
+  ressac_yellow = new Wave(   colorYELW, colorBLUE,    NUM_LEDS*0.3,   75, EASE_QUATR );     // create wave (color, size, speed, easePOW)
+  ressac_red    = new Wave(   colorRED, colorBLUE,    NUM_LEDS*0.3,   75, EASE_QUATR );     // create wave (color, size, speed, easePOW)
+  wavereset();
   waveclock.attach_ms(25, waveanimator );
 
-  // WHITE FISH
-  Fish* fish_white = new Fish(10, 170, 70, 140, 40, 230);     // create fish (size, speedMinimum, boid_cooling, trailer_cooling, spark_chance, spark_brightness)
-  fishnet.add( fish_white );                            // add to fishnet
-  fish_white->setColor( CRGB(255,255,255) );            // set WHITE
-  fish_white->jump(50);                                 // Initial position
 
-  // WHITE FISH 2
-  Fish* fish_white2 = new Fish(10, 120, 70, 140, 40, 230);     // create fish (size, speedMinimum, boid_cooling, trailer_cooling, spark_chance, spark_brightness)
-  fishnet.add( fish_white2 );
-  fish_white2->setColor( CRGB(255,255,255) );      // set WHITE
-  fish_white2->jump(650);                          // Initial position
-
-
-  // WHITE FISH 3
-  Fish* fish_white3 = new Fish(10, 100, 70, 140, 40, 230);                // create fish with default settings
-  fishnet.add( fish_white3 );
-  fish_white3->setColor( CRGB(255,255,255) );    // set RED
-  fish_white3->jump(1250);                   // Initial position
-
-  // WHITE FISH 4
-  Fish* fish_white4 = new Fish(10, 70, 70, 140, 40, 230);                // create fish with default settings
-  fishnet.add( fish_white4 );
-  fish_white4->setColor( CRGB(255,255,255) );    // set RED
-  fish_white4->jump(1500);      
+  // MODE 1: 4 fish + speed CTRL
+  if (FISHMODE == 1)
+    for (int i=0; i<4; i++) 
+      fishnet[i].run(15, random(100, 250), random(NUM_LEDS), true); // size, speed, position, loop
   
 
   // DRAW TASK
@@ -120,15 +156,50 @@ void loop() {
   int lapse = millis() - lastEncoderRead;
   lastEncoderRead = millis();
   if (lapse == 0) lapse = 1;
-  int diff = getEncoderDiff() * ENCODER_SPEED_FACTOR/lapse;
+  int diff = getEncoderDiff() * ENCODER_SPEED_FACTOR/lapse ;
+  if (encoderReverse) diff = -1*diff;
   if (diff != 0) Serial.println(diff);
 
-  // Move FISHNET with encoder
-  if (diff != 0) fishnet.speedAnim( diff );
+  //
+  // MODE 1: 4 fish + speed CTRL
+  //
+  if (FISHMODE == 1) {
 
+    // Move FISHNET with encoder
+    if (diff != 0) 
+      for (int i=0; i<MAX_FISH; i++) 
+        fishnet[i].speedAnim( diff );   
 
+  }
 
-  delay(15);  // this delay influences ENCODER speed factor && WAVE speed factor
+  //
+  // MODE 2: 1-3 fish + fishing CTRL
+  //
+  else if (FISHMODE == 2) {
+
+    // check if enough fish are going up, add if necessary
+    if (countRunningFish() < 2 || !wait(8, random(12000, 15000))) 
+       findDeadFish()->run(6, random(100, 150), 1, false);
+
+    // accelerate
+    if (diff > 0) 
+      for (int i=0; i<MAX_FISH; i++)
+        fishnet[i].speedAnim( diff ); 
+    
+    // decelerate
+    if (diff < 0) {
+      for (int i=0; i<MAX_FISH; i++) fishnet[i].decel();
+    }
+
+    // add new fish
+    if (diff > 800)
+      if (countRunningFish() < MAX_FISH) 
+        if (wait(9, 200));
+        else findDeadFish()->run(6, random(150, 400), 1, false);
+        
+  }
+
+  delay(15);  // this delay influences ENCODER speed factor
 }
 
 //
@@ -143,7 +214,7 @@ void waveanimator() {
   }
   
   // FULL COLOR PAUSE
-  else if (wait(0,100));
+  else if (wait(0,100,false));
 
   // DECAYING 50->100%
   else if (wave_blue->progress() < 100) {
@@ -152,14 +223,10 @@ void waveanimator() {
   }
 
   // BLACK PAUSE
-  else if (wait(1,2000));
+  else if (wait(1,pauseBLACK));
 
   // RESET 
-  else {
-    wave_ressac->reset();
-    wave_blue->reset();
-    waitreset();
-  }
+  else wavereset();
 
 }
 
@@ -171,8 +238,23 @@ void draw() {
   FastLED.clear();
   wave_blue->draw(leds);
   wave_ressac->draw(leds);
-  fishnet.draw(leds);
+  for (int i=0; i<MAX_FISH; i++) fishnet[i].draw( leds );
   FastLED.show();
   delay(1);
 }
 
+
+
+// Fish helpers
+int countRunningFish() {
+  int c = 0;
+  for (int i=0; i<MAX_FISH; i++) 
+    if (fishnet[i].running) c += 1;
+  return c;
+}
+
+Fish* findDeadFish() {
+  for (int i=0; i<MAX_FISH; i++) 
+    if (!fishnet[i].running) return &fishnet[i];
+  return NULL;
+}

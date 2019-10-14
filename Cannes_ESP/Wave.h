@@ -12,7 +12,7 @@
 
 
 // Faded head size
-#define HEADSIZE    15
+#define HEADSIZE    60
 
 class Wave {
 
@@ -20,7 +20,7 @@ class Wave {
         //
         // Constructor (with default values)
         //
-        Wave(CRGB color, int size, int speed, int easing)  : color(color), size(size), speed(speed), easing(easing)
+        Wave(CRGB color, CRGB colorHead, int size, int speed, int easing)  : color(color), colorHead(colorHead), size(size), speed(speed), easing(easing)
         { 
             reset();
         }
@@ -30,8 +30,9 @@ class Wave {
         // Draw
         //
         void draw(CRGB* ll) {
-            for( int j = 0; j < NUM_LEDS; j++) 
-                ll[NUM_LEDS-1-j] += fulltrail[j];   // draw in reverse
+            for( int j = 0; j < NUM_LEDS; j++)
+                if (fulltrail[j])
+                    ll[NUM_LEDS-1-j] = fulltrail[j];   // draw in reverse
         }
 
         //
@@ -76,9 +77,9 @@ class Wave {
                     int k = i+headPos-HEADSIZE;
                     if (k >= 0 && k < NUM_LEDS) 
                         fulltrail[k] = CRGB( 
-                            map(i, 0, HEADSIZE, color.r, 0), 
-                            map(i, 0, HEADSIZE, color.g, 0), 
-                            map(i, 0, HEADSIZE, color.b, 0));
+                            map(i, 0, HEADSIZE, color.r, colorHead.r), 
+                            map(i, 0, HEADSIZE, color.g, colorHead.g), 
+                            map(i, 0, HEADSIZE, color.b, colorHead.b));
                 }
 
                 // Draw BODY
@@ -109,9 +110,10 @@ class Wave {
         //  Internal stuffs
         //
         CRGB color;         // color of the wave
+        CRGB colorHead;     // color of the wave head
         int size;           // max length of the wave
-        int speed;       // length of the head
-        int easing;       // length of the head
+        int speed;          
+        int easing;         // easing profile
 
         int _progress = 0;  // % progress
         uint32_t angle;          // 0->PHI90 = growing   PHI90->PHI180 = descending
