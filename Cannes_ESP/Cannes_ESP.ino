@@ -7,9 +7,6 @@
                   |___/                           
 */                                     
 
-// PINS SUR LA CARTE: 23 22 11 5 21 19
-#include "WiFi.h"
-#include "Ticker.h"
 #include "FastLED.h"
 
 // *******************************************
@@ -33,6 +30,10 @@ bool encoderReverse = true;           // inversion encoder [true | false]
 
 //
 // *******************************************
+
+// PINS SUR LA CARTE: 23 22 11 5 21 19
+#include "WiFi.h"
+#include "Ticker.h"
 
 // LED STRIP
 #define LED_PIN     23
