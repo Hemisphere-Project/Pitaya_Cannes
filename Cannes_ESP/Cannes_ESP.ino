@@ -26,14 +26,6 @@ bool encoderReverse = true;           // inversion encoder [true | false]
 //
 // *******************************************
 
-// WAVE NET
-#include "Wave.h"
-Wave* wave_blue;
-Wave* wave_ressac;
-Wave* ressac_green;
-Wave* ressac_yellow;
-Wave* ressac_red;
-
 // LED STRIP
 #define LED_PIN     23
 #define NUM_LEDS    750
@@ -42,6 +34,14 @@ Wave* ressac_red;
 #define COLOR_ORDER GRB
 CRGB leds[NUM_LEDS];
 CRGB ledsReversed[NUM_LEDS];
+
+// WAVE NET
+#include "Wave.h"
+Wave* wave_blue;
+Wave* wave_ressac;
+Wave* ressac_green;
+Wave* ressac_yellow;
+Wave* ressac_red;
 
 // WAVE CLOCK
 Ticker waveclock;
@@ -158,7 +158,7 @@ void loop() {
   if (lapse == 0) lapse = 1;
   int diff = getEncoderDiff() * ENCODER_SPEED_FACTOR/lapse ;
   if (encoderReverse) diff = -1*diff;
-  if (diff != 0) Serial.println(diff);
+  // if (diff != 0) Serial.println(diff);
 
   //
   // MODE 1: 4 fish + speed CTRL

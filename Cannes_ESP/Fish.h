@@ -175,7 +175,7 @@ class Fish {
 
             if (externalControl) lastMove = millis();
 
-            Serial.println(_speed);
+            // Serial.println(_speed);
         }
 
     
